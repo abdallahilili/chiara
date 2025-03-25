@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "599994651302",
+    "project_id": "chira-966cf",
+    "storage_bucket": "chira-966cf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:599994651302:android:f443a00b212a61bd58da67",
+        "android_client_info": {
+          "package_name": "com.example.chira"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDd2N6cP6JmVx63QsiMjEQtFlZ-Pk4cLWE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
