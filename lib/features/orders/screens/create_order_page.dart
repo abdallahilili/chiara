@@ -1,3 +1,4 @@
+import 'package:chira/common/utils/colors.dart';
 import 'package:chira/common/widgets/custom_button.dart';
 import 'package:chira/common/widgets/custom_input.dart';
 import 'package:chira/common/widgets/custom_input_number.dart';
@@ -44,9 +45,9 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('إنشاء طبلية'),
+          title: const Text('إنشاء طبلية'),
           leading: IconButton(
-            icon: Icon(Icons.close),
+            icon: const Icon(Icons.close),
             onPressed: () => Navigator.of(context).pop(),
           ),
         ),
@@ -64,7 +65,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                       hintText: 'المنتج',
                     ),
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: CustomInputNumber(
                       controller: _quantityController,
@@ -74,16 +75,17 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.add_circle, color: Colors.green, size: 40),
+                    icon: const Icon(Icons.add_circle,
+                        color: Colors.green, size: 40),
                     onPressed: _addProduct,
                   ),
                 ],
               ),
 
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
               // List of added products
-              Text(
+              const Text(
                 ' المنتجات المضافة',
                 style: TextStyle(
                   fontSize: 16,
@@ -98,7 +100,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                       title: Text(_addedProducts[index]['product']),
                       trailing: Text(_addedProducts[index]['quantity']),
                       leading: IconButton(
-                        icon: Icon(Icons.delete, color: Colors.red),
+                        icon: const Icon(Icons.delete, color: Colors.red),
                         onPressed: () {
                           setState(() {
                             _addedProducts.removeAt(index);
@@ -114,31 +116,37 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
               Row(
                 children: [
                   Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // TODO: Implement save logic
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('تم الحفظ')),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
+                      child: ElevatedButton(
+                    onPressed: () {
+                      // TODO: Implement save logic
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('تم الحفظ')),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          greenCustomColor, // Couleur de fond vert clair
+                      minimumSize: const Size(150, 50), // Taille ajustée
+                      elevation: 0, // Pas d'ombre
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(20), // Coins arrondis
                       ),
-                      child: Text('حفظ'),
                     ),
-                  ),
-                  SizedBox(width: 10),
+                    child: const Text(
+                      'إنشاء الطلبية',
+                      style: TextStyle(
+                        fontFamily: 'Droid',
+                        color: whiteColor, // Texte en vert foncé
+                        fontWeight: FontWeight.bold,
+                        fontSize: 24,
+                      ),
+                    ),
+                  )),
+                  const SizedBox(width: 10),
                   Expanded(
                     child:
                         CustomButton(text: 'إلغاء', onPressed: _naviagate_pop),
-
-                    // ElevatedButton(
-                    //   onPressed: () => Navigator.of(context).pop(),
-                    //   style: ElevatedButton.styleFrom(
-                    //     backgroundColor: Colors.red,
-                    //   ),
-                    //   child: Text('إلغاء'),
-                    // ),
                   ),
                 ],
               ),

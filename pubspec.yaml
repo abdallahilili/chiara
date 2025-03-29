@@ -46,6 +46,7 @@ dependencies:
   country_picker: ^2.0.27
   supabase_flutter: ^2.8.4
   firebase_messaging: ^15.2.4
+  lucide_icons: ^0.257.0
   
 
 dev_dependencies:

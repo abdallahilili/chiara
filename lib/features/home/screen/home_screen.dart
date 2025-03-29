@@ -1,6 +1,9 @@
+import 'package:chira/common/utils/colors.dart';
+import 'package:chira/features/home/widgets/action_button_widget.dart';
 import 'package:chira/features/orders/screens/create_order_page.dart';
 import 'package:flutter/material.dart';
 import 'package:chira/features/home/widgets/custom_bottom_nav_bar.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 class HomePage extends StatelessWidget {
   @override
@@ -9,7 +12,27 @@ class HomePage extends StatelessWidget {
       textDirection:
           TextDirection.rtl, // Définit la direction du texte de droite à gauche
       child: Scaffold(
-        appBar: AppBar(),
+        appBar: AppBar(
+          title: const Text(
+            'Chira',
+            style: TextStyle(fontSize: 20, fontFamily: 'Droid'),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.notifications),
+              onPressed: () {
+                // Action pour ouvrir les notifications
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () {
+                // Action pour ouvrir le menu
+              },
+            ),
+          ],
+        ),
+
         backgroundColor: Colors.white,
         body: SafeArea(
           child: Padding(
@@ -24,16 +47,16 @@ class HomePage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   margin: EdgeInsets.zero,
-                  color: Colors.blue[50],
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                  color: const Color(0xFFEAF6E9),
+                  child: const Padding(
+                    padding: EdgeInsets.all(16.0),
                     child: Row(
                       children: [
                         CircleAvatar(
                           radius: 30,
-                          backgroundColor: Colors.blue[200],
-                          child:
-                              Icon(Icons.person, size: 30, color: Colors.white),
+                          backgroundColor: greenCustomColor,
+                          child: Icon(LucideIcons.wallet2,
+                              size: 30, color: Colors.white),
                         ),
                         SizedBox(width: 16),
                         Column(
@@ -45,17 +68,19 @@ class HomePage extends StatelessWidget {
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.black,
+                                fontFamily: 'Droid',
                               ),
                             ),
                             SizedBox(height: 8),
                             Row(
                               children: [
                                 Text(
-                                  '1,234.00',
+                                  '1,234',
                                   style: TextStyle(
                                     fontSize: 32,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.black,
+                                    fontFamily: 'Droid',
                                   ),
                                 ),
                                 SizedBox(width: 8),
@@ -64,6 +89,7 @@ class HomePage extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: Colors.grey,
+                                    fontFamily: 'Droid',
                                   ),
                                 ),
                               ],
@@ -74,80 +100,82 @@ class HomePage extends StatelessWidget {
                     ),
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
 
                 // Boutons d'action interactifs
                 Row(
                   children: [
                     Expanded(
-                      child: _buildActionButton(
-                        icon: Icons.send,
-                        label: ' انشاء طبلية',
+                      child: ActionButton(
+                        icon: LucideIcons.listOrdered,
+                        label: 'انشاء طلبية',
                         onPressed: () {
                           Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => CreateOrderPage()));
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => CreateOrderPage()),
+                          );
                         },
-                        backgroundColor: Colors.white,
-                        borderColor: Colors.grey[300],
+                        backgroundColor:
+                            Colors.blue.shade50, // Une légère teinte bleue
+                        borderColor: Colors.blue.shade200,
                       ),
                     ),
-                    SizedBox(width: 16),
+                    const SizedBox(width: 16),
                     Expanded(
-                      child: _buildActionButton(
-                        icon: Icons.call_received,
-                        label: 'طلب المال',
+                      child: ActionButton(
+                        icon: LucideIcons.shoppingCart,
+                        label: 'عملية شراء',
                         onPressed: () {},
                         backgroundColor: Colors.green[50],
-                        borderColor: Colors.green[100],
+                        borderColor: Colors.green[200],
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
 
                 // Autres boutons interactifs
                 Row(
                   children: [
                     Expanded(
-                      child: _buildActionButton(
-                        icon: Icons.phone_android,
-                        label: 'شراء رصيد',
+                      child: ActionButton(
+                        icon: LucideIcons.pieChart,
+                        label: 'نظرة عامة',
                         onPressed: () {},
-                        backgroundColor: Colors.white,
-                        borderColor: Colors.grey[300],
+                        backgroundColor: Colors.orange.shade50,
+                        borderColor: Colors.orange.shade200,
                       ),
                     ),
-                    SizedBox(width: 16),
+                    const SizedBox(width: 16),
                     Expanded(
-                      child: _buildActionButton(
-                        icon: Icons.receipt,
-                        label: 'دفع الفواتير',
+                      child: ActionButton(
+                        icon: LucideIcons.book,
+                        label: 'دفتر الديون',
                         onPressed: () {},
-                        backgroundColor: Colors.white,
-                        borderColor: Colors.grey[300],
+                        backgroundColor: Colors.red.shade50,
+                        borderColor: Colors.red.shade200,
                       ),
                     ),
                   ],
                 ),
 
                 // Section des favoris
-                SizedBox(height: 20),
-                Text(
+                const SizedBox(height: 20),
+                const Text(
                   'أشخاصك المفضلين',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     _buildAddFavoriteButton(),
-                    SizedBox(width: 16),
+                    const SizedBox(width: 16),
                     _buildFavoriteCircle('غريس ل.', Colors.pink[200]),
-                    SizedBox(width: 16),
+                    const SizedBox(width: 16),
                     _buildFavoriteCircle('لورانس أ.', Colors.blue[200]),
                   ],
                 ),
@@ -157,39 +185,6 @@ class HomePage extends StatelessWidget {
         ),
         bottomNavigationBar:
             CustomBottomNavBar(), // Utilisation du widget séparé
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onPressed,
-    required Color? backgroundColor,
-    required Color? borderColor,
-  }) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: borderColor ?? Colors.transparent),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 28, color: Colors.black),
-            SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.black,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -217,7 +212,7 @@ class HomePage extends StatelessWidget {
       child: Center(
         child: Text(
           initials.split(' ').map((name) => name[0]).join(),
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),

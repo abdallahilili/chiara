@@ -1,4 +1,3 @@
-import 'package:chira/common/utils/colors.dart';
 import 'package:flutter/material.dart';
 
 class CustomInput extends StatelessWidget {
