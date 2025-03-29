@@ -9,14 +9,11 @@ class OTPScreen extends StatelessWidget {
 
   OTPScreen({super.key, required this.verificationId});
 
-  final List<TextEditingController> _controllers =
-      List.generate(6, (_) => TextEditingController());
-  final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
-
+  final TextEditingController _otpController = TextEditingController();
   final AuthController authController = Get.find<AuthController>();
 
   void verifyOTP() {
-    final otpCode = _controllers.map((c) => c.text).join();
+    final otpCode = _otpController.text.trim();
     if (otpCode.length == 6) {
       authController.verifyOTP(verificationId, otpCode);
     }
@@ -24,17 +21,14 @@ class OTPScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: whiteColor,
       appBar: AppBar(
-        elevation: 0,
-        backgroundColor: appBarColor,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.grey),
-          onPressed: () => Get.back(),
+        title: const Text(
+          'تحقق من رمز التحقق',
+          style: TextStyle(fontFamily: 'Droid', fontSize: 16),
         ),
+        elevation: 0,
       ),
       body: Center(
         child: Padding(
@@ -43,50 +37,41 @@ class OTPScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text(
-                'Entrez votre code OTP',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                ' رمز التحقق OTP',
+                style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Droid',
+                    color: tabColor),
+                textDirection: TextDirection.rtl,
               ),
               const SizedBox(height: 10),
               const Text(
-                'Un code à 6 chiffres a été envoyé à votre numéro.',
+                'تم إرسال رمز مكون من 6 أرقام إلى رقم هاتفك.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: Colors.grey),
+                textDirection: TextDirection.rtl,
               ),
               const SizedBox(height: 30),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(6, (index) {
-                  return SizedBox(
-                    width: size.width * 0.12,
-                    child: TextField(
-                      controller: _controllers[index],
-                      focusNode: _focusNodes[index],
-                      textAlign: TextAlign.center,
-                      keyboardType: TextInputType.number,
-                      maxLength: 1,
-                      decoration: InputDecoration(
-                        counterText: '',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      onChanged: (val) {
-                        if (val.isNotEmpty && index < 5) {
-                          FocusScope.of(context)
-                              .requestFocus(_focusNodes[index + 1]);
-                        } else if (val.isEmpty && index > 0) {
-                          FocusScope.of(context)
-                              .requestFocus(_focusNodes[index - 1]);
-                        }
-
-                        if (_controllers.every((c) => c.text.isNotEmpty)) {
-                          verifyOTP();
-                        }
-                      },
-                      onSubmitted: (_) => verifyOTP(),
-                    ),
-                  );
-                }),
+              TextField(
+                controller: _otpController,
+                textAlign: TextAlign.center,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                decoration: InputDecoration(
+                  counterText: '',
+                  hintText: 'أدخل رمز التحقق هنا',
+                  hintStyle: const TextStyle(color: Colors.grey),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onChanged: (val) {
+                  if (val.length == 6) {
+                    verifyOTP();
+                  }
+                },
+                onSubmitted: (_) => verifyOTP(),
               ),
               const SizedBox(height: 20),
               Obx(() => TextButton(
@@ -94,7 +79,7 @@ class OTPScreen extends StatelessWidget {
                         ? authController.resendCode
                         : null,
                     child: Text(
-                      'Renvoyer le code',
+                      'إعادة إرسال الرمز',
                       style: TextStyle(
                         color: authController.remainingSeconds.value == 0
                             ? Colors.blue
@@ -112,9 +97,10 @@ class OTPScreen extends StatelessWidget {
                   )),
               const SizedBox(height: 10),
               Obx(() => Text(
-                    '${authController.remainingSeconds.value ~/ 60}:${(authController.remainingSeconds.value % 60).toString().padLeft(2, '0')} restantes',
+                    '${authController.remainingSeconds.value ~/ 60}:${(authController.remainingSeconds.value % 60).toString().padLeft(2, '0')} ثانية متبقية',
                     style: const TextStyle(fontSize: 16, color: tabColor),
                   )),
+              const SizedBox(height: 30),
             ],
           ),
         ),

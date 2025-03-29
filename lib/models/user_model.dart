@@ -1,40 +1,43 @@
 class UserModel {
   final String name;
   final String uid;
-  final String matricule;
+  final String shopId; // 🔹 Identifiant de la boutique
   final String email;
   final String profilePic;
-  final bool isOnline;
+  final bool isActive;
   final String phoneNumber;
-  final String role;
+  final String role; // Peut être "directeur" ou "employé"
+  final String jobType; // 🔹 Ajout : "vendeur" ou "acheteur"
   final DateTime createdAt;
-  final String? fcmToken; // 🔹 Ajout du champ fcmToken
+  final String? fcmToken;
 
   UserModel({
     required this.name,
     required this.uid,
-    required this.matricule,
+    required this.shopId,
     required this.email,
     required this.profilePic,
-    required this.isOnline,
+    required this.isActive,
     required this.phoneNumber,
     required this.role,
+    required this.jobType, // 🔹 Nouvelle propriété
     required this.createdAt,
-    this.fcmToken, // Peut être null si pas encore enregistré
+    this.fcmToken,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'name': name,
       'uid': uid,
-      'matricule': matricule,
+      'shopId': shopId,
       'email': email,
       'profilePic': profilePic,
-      'isOnline': isOnline,
+      'isActive': isActive,
       'phoneNumber': phoneNumber,
       'role': role,
+      'jobType': jobType, // 🔹 Stocker "vendeur" ou "acheteur"
       'createdAt': createdAt.toIso8601String(),
-      'fcmToken': fcmToken, // 🔹 Ajout dans la sérialisation
+      'fcmToken': fcmToken,
     };
   }
 
@@ -42,14 +45,15 @@ class UserModel {
     return UserModel(
       name: map['name'] ?? '',
       uid: map['uid'] ?? '',
-      matricule: map['matricule'] ?? '',
+      shopId: map['shopId'] ?? '',
       email: map['email'] ?? '',
       profilePic: map['profilePic'] ?? '',
-      isOnline: map['isOnline'] ?? false,
+      isActive: map['isActive'] ?? false,
       phoneNumber: map['phoneNumber'] ?? '',
       role: map['role'] ?? '',
+      jobType: map['jobType'] ?? '', // 🔹 Désérialisation
       createdAt: DateTime.tryParse(map['createdAt'] ?? '') ?? DateTime.now(),
-      fcmToken: map['fcmToken'], // 🔹 Désérialisation
+      fcmToken: map['fcmToken'],
     );
   }
 }

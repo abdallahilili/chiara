@@ -1,5 +1,7 @@
+import 'package:chira/common/utils/colors.dart';
 import 'package:chira/features/auth/controller/auth_controller.dart';
 import 'package:chira/features/auth/repository/auth_repository.dart';
+import 'package:chira/features/home/screen/home_screen.dart';
 import 'package:chira/firebase_options.dart';
 import 'package:chira/landing/screens/landing_screen.dart';
 import 'package:chira/router.dart';
@@ -32,78 +34,11 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.greenAccent),
+        colorScheme: ColorScheme.fromSeed(seedColor: greenCustomColor),
         useMaterial3: true,
       ),
       onGenerateRoute: (settings) => generateRoute(settings),
       home: const AuthCheckScreen(),
-    );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
-
-  void _logoutUser() async {
-    await FirebaseAuth.instance.signOut();
-    Get.offAll(() =>
-        const AuthCheckScreen()); // Redirige vers l'écran d'authentification
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            onPressed: _incrementCounter,
-            tooltip: 'Increment',
-            child: const Icon(Icons.add),
-          ),
-          const SizedBox(width: 10), // Espacement entre les boutons
-          FloatingActionButton(
-            onPressed: _logoutUser,
-            tooltip: 'Logout',
-            backgroundColor: Colors.red,
-            child: const Icon(Icons.logout),
-          ),
-        ],
-      ),
-      // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
@@ -123,7 +58,7 @@ class AuthCheckScreen extends StatelessWidget {
       // Vérifie si l'utilisateur est connecté
       if (authController.currentUser.value != null) {
         // Si l'utilisateur est connecté, afficher la page d'accueil
-        return const MyHomePage(title: 'Home Page');
+        return HomePage();
       } else {
         // Sinon, afficher l'écran de lancement
         return const LandingScreen();

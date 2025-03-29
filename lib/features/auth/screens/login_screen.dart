@@ -1,5 +1,6 @@
 import 'package:chira/common/utils/colors.dart';
 import 'package:chira/common/widgets/custom_button.dart';
+import 'package:chira/common/widgets/custom_input_number.dart';
 import 'package:chira/features/auth/controller/auth_controller.dart';
 import 'package:chira/features/auth/repository/auth_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -67,7 +68,7 @@ class LoginScreen extends StatelessWidget {
       );
     } else {
       // Updated to use GetX snackbar
-      Get.snackbar('Erreur', 'Veuillez choisir un pays');
+      Get.snackbar('خطأ', 'الرجاء اختيار بلد');
     }
   }
 
@@ -77,10 +78,13 @@ class LoginScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Connexion'),
+        title: const Text(
+          'تسجيل الدخول',
+          style: TextStyle(fontFamily: 'Droid', fontSize: 16),
+        ),
         elevation: 0,
-        backgroundColor: backgroundColor,
       ),
+      backgroundColor: whiteColor,
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
@@ -88,20 +92,22 @@ class LoginScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const Text(
-                'Bienvenue sur EduChat !',
+                'مرحباً بكم في تسهيل',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Color.fromARGB(255, 17, 17, 226),
+                  color: greenCustomColor,
+                  fontFamily: 'Droid',
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 15),
               const Text(
-                'Veuillez entrer votre numéro de téléphone pour commencer.',
+                'يرجى إدخال رقم هاتفك .',
                 style: TextStyle(
                   fontSize: 16,
                   color: textColor,
+                  fontFamily: 'Droid',
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -116,39 +122,18 @@ class LoginScreen extends StatelessWidget {
                             Text(
                               '+${country.value?.phoneCode ?? '222'}',
                               style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Color.fromARGB(255, 44, 44, 233)),
+                                  fontSize: 20, color: greenCustomColor),
                             ),
                           ],
                         ),
                       )),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 0),
                   Expanded(
-                    child: TextField(
-                      style: TextStyle(
-                          color: const Color.fromARGB(255, 51, 51, 180)),
+                    child: CustomInputNumber(
                       controller: phoneController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        hintText: 'Numéro de téléphone',
-                        hintStyle: TextStyle(
-                            color: const Color.fromARGB(255, 24, 24, 255)
-                                .withOpacity(0.5)),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 7,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide:
-                              const BorderSide(color: tabColor, width: 1.5),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide:
-                              const BorderSide(color: appBarColor, width: 2.0),
-                        ),
-                      ),
+                      hintText: 'رقم الهاتف',
+                      height: 50,
+                      width: 300,
                     ),
                   ),
                 ],
@@ -158,13 +143,14 @@ class LoginScreen extends StatelessWidget {
                 width: size.width * 0.9,
                 child: CustomButton(
                   onPressed: sendPhoneNumber,
-                  text: 'SUIVANT',
+                  text: 'التالي',
                 ),
               ),
               const SizedBox(height: 20),
               const Text(
-                'En continuant, vous acceptez nos conditions générales d’utilisation.',
+                'بانضمامك إلينا، أنت على بعد خطوة واحدة من تجربة مميزة',
                 style: TextStyle(
+                  fontFamily: 'Droid',
                   fontSize: 12,
                   color: Color.fromARGB(255, 1, 1, 2),
                 ),
@@ -172,7 +158,7 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 30),
               Image.asset(
-                'assets/imgs/illu_phone.png',
+                'assets/imgs/illu_phone.gif',
                 height: size.height * 0.5,
               ),
             ],

@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:chira/features/auth/repository/auth_repository.dart';
 import 'package:chira/models/user_model.dart';
- import 'package:get/get.dart';
+import 'package:get/get.dart';
 
 class AuthController extends GetxController {
   final AuthRepository authRepository;
@@ -19,7 +19,7 @@ class AuthController extends GetxController {
     fetchUserData(); // Charger les données de l'utilisateur dès l'initialisation
   }
 
-void signInWithPhone(String phoneNumber) {
+  void signInWithPhone(String phoneNumber) {
     authRepository.signInWithPhone(phoneNumber);
   }
 
@@ -30,12 +30,12 @@ void signInWithPhone(String phoneNumber) {
     );
   }
 
-  saveUserDataToFirebase(String name, String matricule, String email,
+  saveUserDataToFirebase(String name, String shopId, String email,
       File? profilePic, String role) async {
     isLoading.value = true;
     await authRepository.saveUserDataToFirebase(
       name: name,
-      matricule: matricule,
+      shopId: shopId,
       email: email,
       profilePic: profilePic,
       role: role,

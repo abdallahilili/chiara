@@ -1,3 +1,5 @@
+import 'package:chira/common/utils/colors.dart';
+import 'package:chira/common/widgets/custom_button.dart';
 import 'package:chira/features/auth/controller/user_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -15,16 +17,15 @@ class UserInformationScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Informations Utilisateur'),
+        title: const Text('معلومات المستخدم'),
         elevation: 0,
-        backgroundColor: Colors.transparent,
       ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             child: Column(
               children: [
-                // Image utilisateur
+                // صورة المستخدم
                 Obx(() => Stack(
                       children: [
                         CircleAvatar(
@@ -50,21 +51,21 @@ class UserInformationScreen extends StatelessWidget {
                     )),
                 const SizedBox(height: 20),
 
-                // Champs de saisie
+                // حقول الإدخال
                 _buildTextField(
                   controller: userController.nameController,
-                  hintText: 'Entrez votre nom',
+                  hintText: 'أدخل اسمك',
                 ),
                 _buildTextField(
-                  controller: userController.matriculeController,
-                  hintText: 'Entrez votre matricule',
+                  controller: userController.shopIdController,
+                  hintText: 'أدخل معرف المتجر',
                 ),
                 _buildTextField(
                   controller: userController.emailController,
-                  hintText: 'Entrez votre email',
+                  hintText: 'أدخل بريدك الإلكتروني',
                 ),
 
-                // Sélection du rôle utilisateur
+                // اختيار نوع المستخدم
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(vertical: 10, horizontal: 30),
@@ -75,12 +76,12 @@ class UserInformationScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           _buildCustomRadioButton(
-                            title: 'Professeur',
-                            value: 'Professeur',
+                            title: 'بائع',
+                            value: 'vendeur',
                           ),
                           _buildCustomRadioButton(
-                            title: 'Étudiant',
-                            value: 'Étudiant',
+                            title: 'مشتري',
+                            value: 'acheteur',
                           ),
                         ],
                       ),
@@ -90,12 +91,12 @@ class UserInformationScreen extends StatelessWidget {
 
                 const SizedBox(height: 20),
 
-                // Bouton de soumission
+                // زر المتابعة
                 SizedBox(
                   width: size.width * 0.8,
-                  child: ElevatedButton(
+                  child: CustomButton(
                     onPressed: userController.storeUserData,
-                    child: const Text('SUIVANT'),
+                    text: 'التالي',
                   ),
                 ),
 
@@ -108,7 +109,7 @@ class UserInformationScreen extends StatelessWidget {
     );
   }
 
-  // Widget pour les champs de saisie
+  // ودجت لحقل الإدخال
   Widget _buildTextField({
     required TextEditingController controller,
     required String hintText,
@@ -117,6 +118,7 @@ class UserInformationScreen extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 30),
       child: TextField(
         controller: controller,
+        textAlign: TextAlign.right,
         decoration: InputDecoration(
           hintText: hintText,
           border: OutlineInputBorder(
@@ -127,7 +129,7 @@ class UserInformationScreen extends StatelessWidget {
     );
   }
 
-  // Widget pour les boutons radio personnalisés
+  // ودجت لأزرار الاختيار المخصصة
   Widget _buildCustomRadioButton({
     required String title,
     required String value,
@@ -140,14 +142,13 @@ class UserInformationScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(
               color: userController.selectedRole.value == value
-                  ? Colors.blue
-                  : Colors.grey[200],
+                  ? greenCustomColor
+                  : whiteColor,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: userController.selectedRole.value == value
-                    ? Colors.blue
-                    : Colors.grey,
-              ),
+                  color: userController.selectedRole.value == value
+                      ? greenCustomColor
+                      : whiteColor),
             ),
             child: Row(
               children: [

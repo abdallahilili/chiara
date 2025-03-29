@@ -9,7 +9,7 @@ import 'dart:io';
 import 'package:chira/common/repositories/supabase_storage_repository.dart';
 import 'package:chira/features/auth/screens/otp_screen.dart';
 import 'package:chira/features/auth/screens/user_information_screen.dart';
-import 'package:chira/main.dart';
+import 'package:chira/features/home/screen/home_screen.dart';
 import 'package:chira/models/user_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -73,7 +73,7 @@ class AuthRepository {
 
   Future<void> saveUserDataToFirebase({
     required String name,
-    required String matricule,
+    required String shopId,
     required String email,
     required File? profilePic,
     required String role,
@@ -107,21 +107,20 @@ class AuthRepository {
       var userModel = UserModel(
         name: name,
         uid: uid,
-        matricule: matricule,
+        shopId: shopId,
         email: email,
         profilePic: photoUrl,
-        isOnline: true,
+        isActive: true,
         phoneNumber: user.phoneNumber.toString(),
         role: role,
+        jobType: 'vendeur', // 🔹 Ajout du type de travail
         createdAt: DateTime.now(),
         fcmToken: fcmToken, // 🔹 Ajout du token FCM
       );
 
       // Enregistrement dans Firestore
       await firestore.collection('users').doc(uid).set(userModel.toMap());
-      Get.offAll(() => MyHomePage(
-            title: 'teseeeeseses',
-          )); // Ajoute une navigation à l'écran d'accueil
+      Get.offAll(() => HomePage()); // Ajoute une navigation à l'écran d'accueil
     } catch (e) {
       Get.snackbar("Erreur", e.toString(),
           backgroundColor: Colors.red, colorText: Colors.white);
