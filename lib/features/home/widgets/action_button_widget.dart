@@ -40,7 +40,7 @@ class ActionButton extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 28, color: Colors.black87),
+              Icon(icon, size: 38, color: Colors.black87),
               const SizedBox(height: 8),
               Text(
                 label,

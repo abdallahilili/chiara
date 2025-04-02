@@ -10,33 +10,53 @@ class CreateOrderPage extends StatefulWidget {
 }
 
 class _CreateOrderPageState extends State<CreateOrderPage> {
-  // Controllers for text input fields
   final TextEditingController _productController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
+  final TextEditingController _unitController = TextEditingController();
 
-  // List to store added products
   List<Map<String, dynamic>> _addedProducts = [];
+  int? _editingIndex; // Index du produit en cours de modification
 
-  void _addProduct() {
+  void _addOrUpdateProduct() {
     String product = _productController.text.trim();
     String quantity = _quantityController.text.trim();
+    String unit = _unitController.text.trim();
 
     if (product.isNotEmpty && quantity.isNotEmpty) {
       setState(() {
-        _addedProducts.add({
-          'product': product,
-          'quantity': quantity,
-        });
+        if (_editingIndex == null) {
+          // Ajout d'un nouveau produit
+          _addedProducts.add({
+            'product': product,
+            'quantity': quantity,
+            'unit': unit,
+          });
+        } else {
+          // Mise à jour d'un produit existant
+          _addedProducts[_editingIndex!] = {
+            'product': product,
+            'quantity': quantity,
+            'unit': unit,
+          };
+          _editingIndex = null; // Réinitialiser après mise à jour
+        }
 
-        // Clear input fields after adding
+        // Vider les champs après l'ajout ou la mise à jour
         _productController.clear();
         _quantityController.clear();
+        _unitController.clear();
       });
     }
   }
 
-  void _naviagate_pop() {
-    Navigator.of(context).pop();
+  void _editProduct(int index) {
+    setState(() {
+      _productController.text = _addedProducts[index]['product'];
+      _quantityController.text = _addedProducts[index]['quantity'];
+      _unitController.text = _addedProducts[index]['unit'];
+      _editingIndex =
+          index; // Stocker l'index de l'élément en cours de modification
+    });
   }
 
   @override
@@ -56,10 +76,10 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Product input row
               Row(
                 children: [
                   Expanded(
+                    flex: 2,
                     child: CustomInput(
                       controller: _productController,
                       hintText: 'المنتج',
@@ -67,24 +87,34 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
+                    flex: 1,
                     child: CustomInputNumber(
                       controller: _quantityController,
                       hintText: 'الكمية',
-                      width: 320,
+                      width: 50,
                       height: 50,
                     ),
                   ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 1,
+                    child: CustomInput(
+                      controller: _unitController,
+                      hintText: 'الوحدة',
+                    ),
+                  ),
+                  const SizedBox(width: 10),
                   IconButton(
-                    icon: const Icon(Icons.add_circle,
-                        color: Colors.green, size: 40),
-                    onPressed: _addProduct,
+                    icon: Icon(
+                      _editingIndex == null ? Icons.add_circle : Icons.edit,
+                      color: Colors.green,
+                      size: 40,
+                    ),
+                    onPressed: _addOrUpdateProduct,
                   ),
                 ],
               ),
-
               const SizedBox(height: 20),
-
-              // List of added products
               const Text(
                 ' المنتجات المضافة',
                 style: TextStyle(
@@ -96,48 +126,82 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                 child: ListView.builder(
                   itemCount: _addedProducts.length,
                   itemBuilder: (context, index) {
-                    return ListTile(
-                      title: Text(_addedProducts[index]['product']),
-                      trailing: Text(_addedProducts[index]['quantity']),
-                      leading: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () {
-                          setState(() {
-                            _addedProducts.removeAt(index);
-                          });
-                        },
+                    return Card(
+                      margin: const EdgeInsets.symmetric(
+                          vertical: 5, horizontal: 10),
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 8, horizontal: 10),
+                        leading: IconButton(
+                          icon: const Icon(Icons.remove_circle,
+                              color: Colors.red, size: 30),
+                          onPressed: () {
+                            setState(() {
+                              _addedProducts.removeAt(index);
+                            });
+                          },
+                        ),
+                        title: GestureDetector(
+                          onTap: () => _editProduct(
+                              index), // Remplir le formulaire au clic
+                          child: Text(
+                            _addedProducts[index]['product'],
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Droid',
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                        trailing: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.green[100],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${_addedProducts[index]['quantity']} ${_addedProducts[index]['unit'] ?? 'وحدة'}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Droid',
+                              color: greenCustomColor,
+                            ),
+                          ),
+                        ),
                       ),
                     );
                   },
                 ),
               ),
-
-              // Action buttons
               Row(
                 children: [
                   Expanded(
                       child: ElevatedButton(
                     onPressed: () {
-                      // TODO: Implement save logic
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('تم الحفظ')),
+                        const SnackBar(content: Text('تم الحفظ')),
                       );
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          greenCustomColor, // Couleur de fond vert clair
-                      minimumSize: const Size(150, 50), // Taille ajustée
-                      elevation: 0, // Pas d'ombre
+                      backgroundColor: greenCustomColor,
+                      minimumSize: const Size(150, 50),
+                      elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(20), // Coins arrondis
+                        borderRadius: BorderRadius.circular(20),
                       ),
                     ),
                     child: const Text(
                       'إنشاء الطلبية',
                       style: TextStyle(
                         fontFamily: 'Droid',
-                        color: whiteColor, // Texte en vert foncé
+                        color: whiteColor,
                         fontWeight: FontWeight.bold,
                         fontSize: 24,
                       ),
@@ -145,8 +209,9 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                   )),
                   const SizedBox(width: 10),
                   Expanded(
-                    child:
-                        CustomButton(text: 'إلغاء', onPressed: _naviagate_pop),
+                    child: CustomButton(
+                        text: 'إلغاء',
+                        onPressed: () => Navigator.of(context).pop()),
                   ),
                 ],
               ),
@@ -159,9 +224,9 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
 
   @override
   void dispose() {
-    // Clean up controllers
     _productController.dispose();
     _quantityController.dispose();
+    _unitController.dispose();
     super.dispose();
   }
 }
