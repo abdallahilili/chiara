@@ -1,3 +1,4 @@
+import 'package:chira/common/utils/colors.dart';
 import 'package:flutter/material.dart';
 
 class CustomInputNumber extends StatelessWidget {
@@ -33,6 +34,7 @@ class CustomInputNumber extends StatelessWidget {
             fontSize: fontSize ?? 18, // Contrôlez la taille du texte ici
           ),
           decoration: InputDecoration(
+            focusColor: greenCustomColor,
             hintText: hintText,
             hintStyle: TextStyle(
               fontSize: fontSize ?? 18, // Contrôlez la taille du texte ici
@@ -40,6 +42,9 @@ class CustomInputNumber extends StatelessWidget {
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(20),
+              borderSide: BorderSide(
+                color: greenCustomColor,
+              ),
             ),
           ),
         ),

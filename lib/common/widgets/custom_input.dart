@@ -6,6 +6,7 @@ class CustomInput extends StatelessWidget {
   final double? height;
   final double? width;
   final double? fontSize;
+  final int? maxLines;
 
   const CustomInput({
     super.key,
@@ -13,7 +14,8 @@ class CustomInput extends StatelessWidget {
     required this.hintText,
     this.height,
     this.width,
-    this.fontSize, // Ajouter cette propriété dans le constructeur
+    this.fontSize,
+    this.maxLines,
   });
 
   @override
@@ -22,20 +24,20 @@ class CustomInput extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 0),
       child: SizedBox(
         height: height ??
-            50, // Utilise une hauteur par défaut si elle n'est pas spécifiée
-        width: width ??
-            300, // Utilise une largeur par défaut si elle n'est pas spécifiée
+            (maxLines != null && maxLines! > 1 ? maxLines! * 24.0 : 50),
+        width: width ?? 300,
         child: TextField(
           controller: controller,
+          maxLines: maxLines ?? 1,
           style: TextStyle(
-            fontSize: fontSize ?? 18, // Contrôlez la taille du texte ici
-            fontFamily: 'Droid', // Contrôlez la taille du texte ici
+            fontSize: fontSize ?? 18,
+            fontFamily: 'Droid',
           ),
           decoration: InputDecoration(
             hintText: hintText,
             hintStyle: TextStyle(
-              fontSize: fontSize ?? 18, // Contrôlez la taille du texte ici
-              fontFamily: 'Droid', // Contrôlez la taille du texte ici
+              fontSize: fontSize ?? 18,
+              fontFamily: 'Droid',
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(20),

@@ -2,9 +2,12 @@ import 'package:chira/common/utils/colors.dart';
 import 'package:chira/common/widgets/custom_button.dart';
 import 'package:chira/common/widgets/custom_input.dart';
 import 'package:chira/common/widgets/custom_input_number.dart';
+import 'package:chira/features/orders/screens/create_order_affect_vendeur.dart';
 import 'package:flutter/material.dart';
 
 class CreateOrderPage extends StatefulWidget {
+// liste des produits ajoutés
+
   @override
   _CreateOrderPageState createState() => _CreateOrderPageState();
 }
@@ -13,6 +16,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   final TextEditingController _productController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _unitController = TextEditingController();
+  // Liste des produits ajoutés
 
   List<Map<String, dynamic>> _addedProducts = [];
   int? _editingIndex; // Index du produit en cours de modification
@@ -185,8 +189,14 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                   Expanded(
                       child: ElevatedButton(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('تم الحفظ')),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CreateOrderAffectVendeurPage(
+                            addedProducts:
+                                _addedProducts, // إرسال قائمة المنتجات
+                          ),
+                        ),
                       );
                     },
                     style: ElevatedButton.styleFrom(
