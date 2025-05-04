@@ -3,13 +3,18 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:open_filex/open_filex.dart';
-
-import 'package:excel/excel.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:uuid/uuid.dart';
+import 'package:chira/models/request_model.dart';
+import 'package:chira/models/prodect_request.dart';
 
 class OrdersRepository {
-  static Future<void> generatePdf({
+  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static final FirebaseAuth _auth = FirebaseAuth.instance;
+  static final _uuid = Uuid();
+
+  static Future<File> generatePdf({
     required String amount,
     required String? buyer,
     required String description,
@@ -160,44 +165,214 @@ class OrdersRepository {
     final file = File(filePath);
     await file.writeAsBytes(await pdf.save());
 
-    OpenFilex.open(filePath);
+    // Ne pas ouvrir automatiquement le fichier
+    // OpenFilex.open(filePath); - Cette ligne a été supprimée
+
+    return file;
   }
 
-  static Future<File?> generateExcelFile(
-    List<Map<String, dynamic>> addedProducts,
-  ) async {
-    // Demander la permission d'écriture
-    if (Platform.isAndroid) {
-      var status = await Permission.storage.request();
-      if (!status.isGranted) return null;
+  // Autres méthodes de la classe (inchangées)
+  // ...
+
+  // Méthode pour créer une nouvelle demande dans Firebase
+  static Future<String> createRequest({
+    required List<Map<String, dynamic>> products,
+    required String fileUrl,
+    String? excelFileUrl,
+    String? montant,
+    String? description,
+    String? purchaseById,
+    required String shopId,
+  }) async {
+    try {
+      // Génération d'un ID unique pour cette demande
+      final String requestId = _uuid.v4();
+      final String? currentUserId = _auth.currentUser?.uid;
+
+      if (currentUserId == null) {
+        throw Exception("Utilisateur non authentifié");
+      }
+
+      // Convertir les produits en format ProductRequest
+      List<ProductRequest> requestProducts = products.map((product) {
+        return ProductRequest(
+          nom: product['product'],
+          quantite: int.tryParse(product['quantity']) ?? 0,
+          unite: product['unit'] ?? '',
+          etat: 'en attente',
+        );
+      }).toList();
+
+      // Créer le modèle de demande
+      final requestModel = RequestModel(
+        id: requestId,
+        vendeurId: currentUserId,
+        produits: requestProducts,
+        createdAt: DateTime.now(),
+        createdBy: currentUserId,
+        purchaseBy: purchaseById,
+        file: fileUrl,
+        excelFile: excelFileUrl,
+        montant: montant,
+        description: description,
+      );
+
+      // Enregistrer dans Firestore
+      await _firestore
+          .collection('shops')
+          .doc(shopId)
+          .collection('requests')
+          .doc(requestId)
+          .set(requestModel.toMap());
+
+      return requestId;
+    } catch (e) {
+      print('Erreur lors de la création de la demande: $e');
+      throw Exception("Échec de l'enregistrement de la demande: $e");
     }
+  }
 
-    // Créer un classeur
-    final excel = Excel.createExcel();
-    final Sheet sheetObject = excel['Produits'];
-    sheetObject.appendRow(['Produit', 'Quantité', 'Unité']);
+  // Méthode pour mettre à jour une demande existante
+  static Future<void> updateRequest({
+    required String requestId,
+    required String shopId,
+    String? purchaseById,
+    String? newStatus,
+    List<Map<String, dynamic>>? updatedProducts,
+  }) async {
+    try {
+      final docRef = _firestore
+          .collection('shops')
+          .doc(shopId)
+          .collection('requests')
+          .doc(requestId);
 
-    for (var product in addedProducts) {
-      sheetObject.appendRow([
-        product['product'] ?? '',
-        product['quantity'] ?? '',
-        product['unit'] ?? ''
-      ]);
-      print('prodiot : $product[product]');
-      print('quantite : $product[quantity]');
+      // Récupérer la demande actuelle
+      final requestSnapshot = await docRef.get();
+      if (!requestSnapshot.exists) {
+        throw Exception("La demande n'existe pas");
+      }
+
+      // Créer un map avec les champs à mettre à jour
+      Map<String, dynamic> updateData = {};
+
+      // Ajouter l'acheteur s'il est fourni
+      if (purchaseById != null) {
+        updateData['purchaseBy'] = purchaseById;
+      }
+
+      // Mettre à jour les produits si fournis
+      if (updatedProducts != null) {
+        List<Map<String, dynamic>> formattedProducts =
+            updatedProducts.map((product) {
+          return {
+            'nom': product['product'],
+            'quantite': int.tryParse(product['quantity']) ?? 0,
+            'unite': product['unit'] ?? '',
+            'etat': product['status'] ?? 'en attente',
+          };
+        }).toList();
+
+        updateData['produits'] = formattedProducts;
+      }
+
+      // Mettre à jour le document dans Firestore
+      await docRef.update(updateData);
+    } catch (e) {
+      print('Erreur lors de la mise à jour de la demande: $e');
+      throw Exception("Échec de la mise à jour de la demande: $e");
     }
+  }
 
-    // Obtenir le répertoire
-    final dir = await getApplicationDocumentsDirectory();
-    final filePath = '${dir.path}/produits.xlsx';
-    final fileBytes = excel.encode();
+  // Méthode pour affecter un acheteur à une demande
+  static Future<void> assignBuyerToRequest({
+    required String requestId,
+    required String shopId,
+    required String buyerId,
+  }) async {
+    try {
+      await _firestore
+          .collection('shops')
+          .doc(shopId)
+          .collection('requests')
+          .doc(requestId)
+          .update({
+        'purchaseBy': buyerId,
+      });
+    } catch (e) {
+      print('Erreur lors de l\'affectation de l\'acheteur: $e');
+      throw Exception("Échec de l'affectation de l'acheteur: $e");
+    }
+  }
 
-    print('File path: $filePath');
+  // Méthode pour obtenir toutes les demandes d'une boutique
+  static Stream<List<RequestModel>> getShopRequests(String shopId) {
+    return _firestore
+        .collection('shops')
+        .doc(shopId)
+        .collection('requests')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return RequestModel.fromMap(doc.data());
+      }).toList();
+    });
+  }
 
-    if (fileBytes == null) return null;
+  // Méthode pour obtenir les demandes créées par un utilisateur spécifique
+  static Stream<List<RequestModel>> getUserRequests({
+    required String shopId,
+    required String userId,
+  }) {
+    return _firestore
+        .collection('shops')
+        .doc(shopId)
+        .collection('requests')
+        .where('createdBy', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return RequestModel.fromMap(doc.data());
+      }).toList();
+    });
+  }
 
-    final file = File(filePath);
-    await file.writeAsBytes(fileBytes);
-    return file;
+  // Méthode pour obtenir les demandes assignées à un acheteur spécifique
+  static Stream<List<RequestModel>> getBuyerAssignedRequests({
+    required String shopId,
+    required String buyerId,
+  }) {
+    return _firestore
+        .collection('shops')
+        .doc(shopId)
+        .collection('requests')
+        .where('purchaseBy', isEqualTo: buyerId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return RequestModel.fromMap(doc.data());
+      }).toList();
+    });
+  }
+
+  // Méthode pour supprimer une demande
+  static Future<void> deleteRequest({
+    required String requestId,
+    required String shopId,
+  }) async {
+    try {
+      await _firestore
+          .collection('shops')
+          .doc(shopId)
+          .collection('requests')
+          .doc(requestId)
+          .delete();
+    } catch (e) {
+      print('Erreur lors de la suppression de la demande: $e');
+      throw Exception("Échec de la suppression de la demande: $e");
+    }
   }
 }

@@ -1,21 +1,27 @@
 import 'dart:io';
 import 'package:chira/common/repositories/supabase_storage_repository.dart';
 import 'package:chira/features/orders/repositories/orders_repository.dart';
+import 'package:chira/features/orders/widgets/success_dialog.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
-
 import 'package:chira/common/widgets/custom_button.dart';
 import 'package:chira/common/widgets/custom_input.dart';
 import 'package:chira/common/widgets/custom_input_number.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:open_filex/open_filex.dart'; // Ajout de l'import pour ouvrir le fichier
 
 class CreateOrderAffectVendeurPage extends StatefulWidget {
   final List<Map<String, dynamic>> addedProducts;
+  final String shopId;
 
-  const CreateOrderAffectVendeurPage({super.key, required this.addedProducts});
+  const CreateOrderAffectVendeurPage({
+    Key? key,
+    required this.addedProducts,
+    required this.shopId,
+  }) : super(key: key);
 
   @override
   _CreateOrderAffectVendeurPageState createState() =>
@@ -28,6 +34,15 @@ class _CreateOrderAffectVendeurPageState
   final TextEditingController _descriptionController = TextEditingController();
   String? _selectedBuyer;
   File? _selectedImage;
+  bool _isLoading = false;
+  File? _generatedPdfFile; // Pour stocker le fichier PDF généré
+
+  // Modifiez ces valeurs avec les IDs réels des acheteurs
+  final Map<String, String> _buyersMap = {
+    'المشتري 1': 'buyer_id_1',
+    'المشتري 2': 'buyer_id_2',
+    'المشتري 3': 'buyer_id_3',
+  };
 
   Future<void> selectImage() async {
     final pickedImage =
@@ -39,7 +54,7 @@ class _CreateOrderAffectVendeurPageState
     }
   }
 
-  Future<void> generateAndUploadExcelFile(
+  Future<String?> generateAndUploadExcelFile(
     List<Map<String, dynamic>> addedProducts,
   ) async {
     // Créer un classeur Excel
@@ -62,31 +77,124 @@ class _CreateOrderAffectVendeurPageState
         const SnackBar(
             content: Text('Erreur lors de la génération du fichier Excel')),
       );
-      return;
+      return null;
     }
 
     try {
       // Créer un fichier temporaire en mémoire
       final directory = await getTemporaryDirectory();
-      final file = File('${directory.path}/produits.xlsx');
-      await file.writeAsBytes(fileBytes);
+      final excelFilePath = '${directory.path}/produits.xlsx';
+      final excelFile = File(excelFilePath);
+      await excelFile.writeAsBytes(fileBytes);
 
       // Uploader le fichier vers Supabase
       final supabaseRepository = SupabaseStorageRepository();
+      final fileReference =
+          'produits/${DateTime.now().millisecondsSinceEpoch}.xlsx';
       final publicUrl = await supabaseRepository.storeFileToSupabase(
-        'chira-app', // Remplacez par votre nom de bucket
-        'produits/${DateTime.now().millisecondsSinceEpoch}.xlsx', // Référence unique pour le fichier
-        file,
+        'chira-app', // Votre nom de bucket
+        fileReference,
+        excelFile,
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Fichier téléchargé avec succès: $publicUrl')),
-      );
+      return publicUrl;
     } catch (e) {
       print('Erreur lors du téléchargement du fichier vers Supabase: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('Erreur lors du téléchargement du fichier')),
+      );
+      return null;
+    }
+  }
+
+  Future<String?> uploadPdfToSupabase(File pdfFile) async {
+    try {
+      final supabaseRepository = SupabaseStorageRepository();
+      final fileReference =
+          'commandes/${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final publicUrl = await supabaseRepository.storeFileToSupabase(
+        'chira-app', // Votre nom de bucket
+        fileReference,
+        pdfFile,
+      );
+      return publicUrl;
+    } catch (e) {
+      print('Erreur lors du téléchargement du PDF vers Supabase: $e');
+      return null;
+    }
+  }
+
+  Future<void> saveOrder() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // 1. Générer et télécharger le fichier Excel
+      final excelUrl = await generateAndUploadExcelFile(widget.addedProducts);
+      if (excelUrl == null) {
+        throw Exception("Échec du téléchargement du fichier Excel");
+      }
+
+      // 2. Générer le PDF et récupérer le fichier
+      final File pdfFile = await OrdersRepository.generatePdf(
+        amount: _amountController.text,
+        buyer: _selectedBuyer,
+        description: _descriptionController.text,
+        addedProducts: widget.addedProducts,
+        imageFile: _selectedImage,
+      );
+
+      // Stocker le fichier PDF pour une utilisation ultérieure
+      _generatedPdfFile = pdfFile;
+
+      // 3. Télécharger le PDF sur Supabase
+      final pdfUrl = await uploadPdfToSupabase(pdfFile);
+      if (pdfUrl == null) {
+        throw Exception("Échec du téléchargement du PDF");
+      }
+
+      // 4. Créer la demande dans Firebase avec tous les nouveaux champs
+      final String? buyerId =
+          _selectedBuyer != null ? _buyersMap[_selectedBuyer] : null;
+
+      final requestId = await OrdersRepository.createRequest(
+        products: widget.addedProducts,
+        fileUrl: pdfUrl, // URL du PDF
+        excelFileUrl: excelUrl, // URL du fichier Excel
+        montant: _amountController.text, // Montant de la commande
+        description: _descriptionController.text, // Description de la commande
+        purchaseById: buyerId, // ID de l'acheteur sélectionné
+        shopId: widget.shopId, // ID du magasin
+      );
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      // Afficher un dialogue de succès
+      if (!mounted) return;
+
+      // Utiliser le nouveau widget à travers l'extension
+      context.showOrderSuccessDialog(
+        pdfFile: _generatedPdfFile,
+        onDismiss: () {
+          Navigator.of(context).pop(); // Retourner à l'écran précédent
+        },
+      );
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+
+      // Afficher un message d'erreur
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                'Erreur lors de la création de la commande: ${e.toString()}')),
       );
     }
   }
@@ -103,135 +211,136 @@ class _CreateOrderAffectVendeurPageState
             onPressed: () => Navigator.of(context).pop(),
           ),
         ),
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'من سيقوم بعملية الشراء',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-
-                /// ✅ **Dropdown pour sélectionner l’acheteur**
-                DropdownButtonFormField<String>(
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(25),
-                      borderSide: BorderSide.none,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(25),
-                      borderSide: const BorderSide(
-                          color: Color.fromARGB(255, 42, 100, 45), width: 2),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  value: _selectedBuyer,
-                  items: ['المشتري 1', 'المشتري 2', 'المشتري 3']
-                      .map((buyer) =>
-                          DropdownMenuItem(value: buyer, child: Text(buyer)))
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedBuyer = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                /// ✅ **Champ pour le montant**
-                CustomInputNumber(
-                  controller: _amountController,
-                  hintText: 'المبلغ المرسل',
-                ),
-                const SizedBox(height: 16),
-
-                /// ✅ **Sélection et affichage d'une image**
-                GestureDetector(
-                  onTap: selectImage,
-                  child: Container(
-                    width: double.infinity,
-                    height: 150,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(10),
-                      // border: Border.all(color: Colors.grey, width: 1),
-                    ),
-                    child: _selectedImage != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: Image.file(
-                              _selectedImage!,
-                              width: double.infinity,
-                              height: 150,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        : const Center(
-                            child: Icon(
-                              Icons.camera_alt,
-                              size: 40,
-                              color: Colors.black54,
-                            ),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                /// ✅ **Champ de description**
-                CustomInput(
-                  controller: _descriptionController,
-                  hintText: 'وصف',
-                  maxLines: 4,
-                ),
-                const SizedBox(height: 20),
-
-                /// ✅ **Boutons avec gestion correcte de la largeur**
-                Row(
+        body: Stack(
+          children: [
+            SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      child: CustomButton(
-                        text: 'حفظ',
-                        onPressed: () async {
-                          // Générer le fichier Excel
-                          await generateAndUploadExcelFile(
-                              widget.addedProducts);
+                    const Text(
+                      'من سيقوم بعملية الشراء',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
 
-                          // Appel de la génération du PDF
-                          // OrdersRepository.generatePdf(
-                          //   amount: _amountController.text,
-                          //   buyer: _selectedBuyer,
-                          //   description: _descriptionController.text,
-                          //   addedProducts: widget.addedProducts,
-                          //   imageFile: _selectedImage,
-                          // );
+                    // Dropdown pour sélectionner l'acheteur
+                    DropdownButtonFormField<String>(
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(25),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(25),
+                          borderSide: const BorderSide(
+                              color: Color.fromARGB(255, 42, 100, 45),
+                              width: 2),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                      value: _selectedBuyer,
+                      items: _buyersMap.keys
+                          .map((buyer) => DropdownMenuItem(
+                              value: buyer, child: Text(buyer)))
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedBuyer = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
 
-                          // Afficher un message
-                        },
+                    // Champ pour le montant
+                    CustomInputNumber(
+                      controller: _amountController,
+                      hintText: 'المبلغ المرسل',
+                    ),
+                    const SizedBox(height: 16),
 
-                        // 📝 Générer le PDF
+                    // Sélection et affichage d'une image
+                    GestureDetector(
+                      onTap: selectImage,
+                      child: Container(
+                        width: double.infinity,
+                        height: 150,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: _selectedImage != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.file(
+                                  _selectedImage!,
+                                  width: double.infinity,
+                                  height: 150,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : const Center(
+                                child: Icon(
+                                  Icons.camera_alt,
+                                  size: 40,
+                                  color: Colors.black54,
+                                ),
+                              ),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: CustomButton(
-                        text: 'إلغاء',
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
+                    const SizedBox(height: 16),
+
+                    // Champ de description
+                    CustomInput(
+                      controller: _descriptionController,
+                      hintText: 'وصف',
+                      maxLines: 4,
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Boutons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: CustomButton(
+                            text: 'حفظ',
+                            onPressed: saveOrder,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: CustomButton(
+                            text: 'إلغاء',
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
+
+            // Indicateur de chargement
+            if (_isLoading)
+              Container(
+                color: Colors.black.withOpacity(0.3),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Theme.of(context).primaryColor,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

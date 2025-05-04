@@ -7,10 +7,13 @@ class RequestModel {
   final DateTime createdAt;
 
   final String? createdBy; // facultatif : utilisateur qui a créé la demande
-  final String? purchaseBy; // facultatif : utilisateur qui a acheté
+  final String? purchaseBy; // facultatif : utilisateur qui va faire l'achat
 
-  final String
-      file; // ✅ URL du fichier qui sera envoyé à Supabase et contient list de produits
+  final String file; // URL du fichier PDF qui sera envoyé à Supabase
+  final String? excelFile; // URL du fichier Excel qui sera envoyé à Supabase
+
+  final String? montant; // montant envoyé pour l'achat
+  final String? description; // description de la commande
 
   RequestModel({
     required this.id,
@@ -19,7 +22,10 @@ class RequestModel {
     required this.createdAt,
     this.createdBy,
     this.purchaseBy,
-    required this.file, // ✅ Nouveau champ requis
+    required this.file,
+    this.excelFile, // Nouveau champ pour le fichier Excel
+    this.montant, // Nouveau champ pour le montant
+    this.description, // Nouveau champ pour la description
   });
 
   Map<String, dynamic> toMap() {
@@ -30,7 +36,10 @@ class RequestModel {
       'createdAt': createdAt.toIso8601String(),
       'createdBy': createdBy,
       'purchaseBy': purchaseBy,
-      'file': file, // ✅ Inclure le champ file dans la conversion en Map
+      'file': file,
+      'excelFile': excelFile, // Inclure le champ excelFile
+      'montant': montant, // Inclure le champ montant
+      'description': description, // Inclure le champ description
     };
   }
 
@@ -44,8 +53,10 @@ class RequestModel {
       createdAt: DateTime.tryParse(map['createdAt'] ?? '') ?? DateTime.now(),
       createdBy: map['createdBy'],
       purchaseBy: map['purchaseBy'],
-      file: map['file'] ??
-          '', // ✅ Inclure le champ file dans la conversion depuis Map
+      file: map['file'] ?? '',
+      excelFile: map['excelFile'], // Récupérer le champ excelFile
+      montant: map['montant'], // Récupérer le champ montant
+      description: map['description'], // Récupérer le champ description
     );
   }
 }

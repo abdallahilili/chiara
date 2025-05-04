@@ -193,8 +193,8 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => CreateOrderAffectVendeurPage(
-                            addedProducts:
-                                _addedProducts, // إرسال قائمة المنتجات
+                            addedProducts: _addedProducts,
+                            shopId: '008', // إرسال قائمة المنتجات
                           ),
                         ),
                       );

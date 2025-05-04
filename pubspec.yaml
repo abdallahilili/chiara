@@ -51,7 +51,9 @@ dependencies:
   open_filex: ^4.7.0
   excel: ^2.0.0
   permission_handler: ^10.0.0 
-  
+  share_plus: ^7.2.0
+  animated_icon: ^0.0.9
+  lottie: ^3.1.0
 
 dev_dependencies:
   flutter_test:
@@ -80,6 +82,8 @@ flutter:
     - assets/imgs/logo_tesshil02.png
     - assets/imgs/logo_tesshil02.svg
     - assets/imgs/illu_phone.gif
+    - assets/imgs/check.gif
+    
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
