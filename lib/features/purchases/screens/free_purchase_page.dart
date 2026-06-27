@@ -2,28 +2,26 @@ import 'package:chira/common/utils/colors.dart';
 import 'package:chira/common/widgets/custom_button.dart';
 import 'package:chira/common/widgets/custom_input.dart';
 import 'package:chira/common/widgets/custom_input_number.dart';
-import 'package:chira/features/purchases/repository/free_purchase_repository.dart';
+import 'package:chira/features/purchases/controller/purchases_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
-class FreePurchasePage extends StatefulWidget {
-  const FreePurchasePage({super.key});
+class FreePurchasePage extends StatelessWidget {
+  FreePurchasePage({super.key});
 
-  @override
-  _FreePurchasePageState createState() => _FreePurchasePageState();
-}
-
-class _FreePurchasePageState extends State<FreePurchasePage> {
+  // Injection du controller GetX
+  final PurchasesController controller = Get.put(PurchasesController());
+  
+  // Controllers pour les champs de texte
   final TextEditingController _productController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _unitPriceController = TextEditingController();
   final TextEditingController _totalPriceController = TextEditingController();
 
-  List<Map<String, dynamic>> _addedProducts = [];
-  int? _editingIndex;
-  double _totalAmount = 0.0;
-  bool _showTotalPriceField = false;
+  // Index du produit en cours de modification
+  final RxInt editingIndex = (-1).obs;
 
-  void _addOrUpdateProduct() {
+  void _addOrUpdateProduct(BuildContext context) {
     String product = _productController.text.trim();
     String quantityStr = _quantityController.text.trim();
     String unitPriceStr = _unitPriceController.text.trim();
@@ -50,105 +48,74 @@ class _FreePurchasePageState extends State<FreePurchasePage> {
     if (unitPriceStr.isNotEmpty) {
       // Si l'utilisateur a entré le prix unitaire
       unitPrice = double.tryParse(unitPriceStr) ?? 0;
-      totalPrice = quantity * unitPrice;
+      totalPrice = controller.calculateTotalPrice(unitPrice, quantity);
     } else {
       // Si l'utilisateur a entré le prix total
       totalPrice = double.tryParse(totalPriceStr) ?? 0;
-      unitPrice = quantity != 0 ? totalPrice / quantity : 0;
+      unitPrice = controller.calculateUnitPrice(totalPrice, quantity);
     }
 
-    setState(() {
-      if (_editingIndex == null) {
-        // Ajout d'un nouveau produit
-        _addedProducts.add({
-          'product': product,
-          'quantity': quantity,
-          'unitPrice': unitPrice,
-          'totalPrice': totalPrice,
-        });
-      } else {
-        // Mise à jour d'un produit existant
-        _addedProducts[_editingIndex!] = {
-          'product': product,
-          'quantity': quantity,
-          'unitPrice': unitPrice,
-          'totalPrice': totalPrice,
-        };
-        _editingIndex = null;
-      }
+    if (editingIndex.value == -1) {
+      // Ajout d'un nouveau produit
+      controller.addProduct(
+        product: product,
+        quantity: quantity,
+        unitPrice: unitPrice,
+        totalPrice: totalPrice,
+      );
+    } else {
+      // Mise à jour d'un produit existant
+      controller.updateProduct(
+        editingIndex.value,
+        product: product,
+        quantity: quantity,
+        unitPrice: unitPrice,
+        totalPrice: totalPrice,
+      );
+      editingIndex.value = -1;
+    }
 
-      // Calculer le montant total
-      _calculateTotalAmount();
-
-      // Vider les champs
-      _productController.clear();
-      _quantityController.clear();
-      _unitPriceController.clear();
-      _totalPriceController.clear();
-    });
+    // Vider les champs
+    _productController.clear();
+    _quantityController.clear();
+    _unitPriceController.clear();
+    _totalPriceController.clear();
   }
 
   void _editProduct(int index) {
-    setState(() {
-      _productController.text = _addedProducts[index]['product'];
-      _quantityController.text = _addedProducts[index]['quantity'].toString();
-      _unitPriceController.text =
-          _addedProducts[index]['unitPrice'].toStringAsFixed(2);
-      _totalPriceController.text =
-          _addedProducts[index]['totalPrice'].toStringAsFixed(2);
-      _editingIndex = index;
-    });
+    _productController.text = controller.addedProducts[index]['product'];
+    _quantityController.text = controller.addedProducts[index]['quantity'].toString();
+    _unitPriceController.text =
+        controller.addedProducts[index]['unitPrice'].toStringAsFixed(2);
+    _totalPriceController.text =
+        controller.addedProducts[index]['totalPrice'].toStringAsFixed(2);
+    editingIndex.value = index;
   }
 
-  void _removeProduct(int index) {
-    setState(() {
-      _addedProducts.removeAt(index);
-      _calculateTotalAmount();
-    });
-  }
-
-  void _calculateTotalAmount() {
-    _totalAmount = _addedProducts.fold(0.0, (sum, product) {
-      return sum + (product['totalPrice'] as double);
-    });
-  }
-
-  Future<void> _savePurchase() async {
-    if (_addedProducts.isEmpty) {
+  Future<void> _savePurchase(BuildContext context) async {
+    if (controller.addedProducts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('يرجى إضافة منتج واحد على الأقل')),
       );
       return;
     }
 
-    try {
-      // Show loading indicator
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
+    final success = await controller.createFreePurchase(
+      shopId: '008', // TODO: Get actual shop ID from user context
+      description: 'شراء حر',
+      notes: 'تم إنشاء هذا الشراء من تطبيق شيرا',
+    );
 
-      // Save purchase to Firebase
-      await FreePurchaseRepository.createFreePurchase(
-        shopId: '008', // TODO: Get actual shop ID from user context
-        products: _addedProducts,
-        description: 'شراء حر',
-        notes: 'تم إنشاء هذا الشراء من تطبيق شيرا',
-      );
-
-      // Close loading dialog
-      Navigator.of(context).pop();
-
+    if (success) {
       // Show success dialog
+      if (!context.mounted) return;
+      
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('تم الحفظ'),
           content: Text(
-              'تمت عملية الشراء بنجاح\nالمبلغ الإجمالي: ${_totalAmount.toStringAsFixed(2)} أوقية'),
+              'تمت عملية الشراء بنجاح\nالمبلغ الإجمالي: ${controller.totalAmount.value.toStringAsFixed(2)} أوقية'),
           actions: [
             TextButton(
               onPressed: () {
@@ -160,14 +127,13 @@ class _FreePurchasePageState extends State<FreePurchasePage> {
           ],
         ),
       );
-    } catch (e) {
-      // Close loading dialog if open
-      Navigator.of(context).pop();
-
+    } else {
       // Show error message
+      if (!context.mounted) return;
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('حدث خطأ أثناء حفظ عملية الشراء: ${e.toString()}'),
+          content: Text('حدث خطأ أثناء حفظ عملية الشراء: ${controller.errorMessage.value}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -183,7 +149,10 @@ class _FreePurchasePageState extends State<FreePurchasePage> {
           title: const Text('شراء حر (بدون طلب)'),
           leading: IconButton(
             icon: const Icon(Icons.close),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              controller.resetForm();
+              Navigator.of(context).pop();
+            },
           ),
         ),
         body: LayoutBuilder(
@@ -230,10 +199,10 @@ class _FreePurchasePageState extends State<FreePurchasePage> {
                               // Toggle between unit price and total price
                               Row(
                                 children: [
-                                   const SizedBox(width: 20,),
-                                  SizedBox(
-                                    width: 250, // أو أي قيمة تناسب التصميم
-                                    child: _showTotalPriceField
+                                  const SizedBox(width: 20),
+                                  Obx(() => SizedBox(
+                                    width: 250,
+                                    child: controller.showTotalPriceField.value
                                         ? CustomInputNumber(
                                             controller: _totalPriceController,
                                             hintText: 'السعر الإجمالي',
@@ -242,40 +211,36 @@ class _FreePurchasePageState extends State<FreePurchasePage> {
                                             controller: _unitPriceController,
                                             hintText: 'سعر الفرد',
                                           ),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(_showTotalPriceField
+                                  )),
+                                  Obx(() => IconButton(
+                                    icon: Icon(controller.showTotalPriceField.value
                                         ? Icons.swap_horiz
                                         : Icons.swap_vert),
                                     onPressed: () {
-                                      setState(() {
-                                        _showTotalPriceField =
-                                            !_showTotalPriceField;
-                                        if (_showTotalPriceField) {
-                                          _unitPriceController.clear();
-                                        } else {
-                                          _totalPriceController.clear();
-                                        }
-                                      });
+                                      controller.togglePriceField();
+                                      if (controller.showTotalPriceField.value) {
+                                        _unitPriceController.clear();
+                                      } else {
+                                        _totalPriceController.clear();
+                                      }
                                     },
-                                    tooltip: _showTotalPriceField
+                                    tooltip: controller.showTotalPriceField.value
                                         ? 'إدخال سعر الفرد'
                                         : 'إدخال السعر الإجمالي',
-                                  ),
-                                 
+                                  )),
                                 ],
                               ),
 
                               // Add/Update button
                               SizedBox(
                                 width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: _addOrUpdateProduct,
-                                  icon: Icon(_editingIndex == null
+                                child: Obx(() => ElevatedButton.icon(
+                                  onPressed: () => _addOrUpdateProduct(context),
+                                  icon: Icon(editingIndex.value == -1
                                       ? Icons.add
                                       : Icons.edit),
                                   label: Text(
-                                    _editingIndex == null
+                                    editingIndex.value == -1
                                         ? 'إضافة المنتج'
                                         : 'تحديث المنتج',
                                     style: const TextStyle(fontFamily: 'Droid'),
@@ -286,7 +251,7 @@ class _FreePurchasePageState extends State<FreePurchasePage> {
                                     padding: const EdgeInsets.symmetric(
                                         vertical: 12),
                                   ),
-                                ),
+                                )),
                               ),
                             ],
                           ),
@@ -367,7 +332,7 @@ class _FreePurchasePageState extends State<FreePurchasePage> {
                         constraints: BoxConstraints(
                           maxHeight: constraints.maxHeight * 0.4,
                         ),
-                        child: _addedProducts.isEmpty
+                        child: Obx(() => controller.addedProducts.isEmpty
                             ? Container(
                                 decoration: BoxDecoration(
                                   border: Border.all(color: Colors.grey[300]!),
@@ -389,9 +354,9 @@ class _FreePurchasePageState extends State<FreePurchasePage> {
                             : ListView.builder(
                                 shrinkWrap: true,
                                 physics: const ClampingScrollPhysics(),
-                                itemCount: _addedProducts.length,
+                                itemCount: controller.addedProducts.length,
                                 itemBuilder: (context, index) {
-                                  final product = _addedProducts[index];
+                                  final product = controller.addedProducts[index];
                                   return Container(
                                     decoration: BoxDecoration(
                                       border: Border(
@@ -483,7 +448,7 @@ class _FreePurchasePageState extends State<FreePurchasePage> {
                                               if (value == 'edit') {
                                                 _editProduct(index);
                                               } else if (value == 'delete') {
-                                                _removeProduct(index);
+                                                controller.removeProduct(index);
                                               }
                                             },
                                           ),
@@ -492,42 +457,43 @@ class _FreePurchasePageState extends State<FreePurchasePage> {
                                     ),
                                   );
                                 },
-                              ),
+                              )),
                       ),
 
                       // Total amount
-                      if (_addedProducts.isNotEmpty)
-                        Container(
-                          margin: const EdgeInsets.symmetric(vertical: 16),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: greenCustomColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: greenCustomColor),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'المبلغ الإجمالي:',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'Droid',
-                                ),
+                      Obx(() => controller.addedProducts.isNotEmpty
+                          ? Container(
+                              margin: const EdgeInsets.symmetric(vertical: 16),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: greenCustomColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: greenCustomColor),
                               ),
-                              Text(
-                                '${_totalAmount.toStringAsFixed(2)} أوقية',
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: greenCustomColor,
-                                  fontFamily: 'Droid',
-                                ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'المبلغ الإجمالي:',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'Droid',
+                                    ),
+                                  ),
+                                  Text(
+                                    '${controller.totalAmount.value.toStringAsFixed(2)} أوقية',
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: greenCustomColor,
+                                      fontFamily: 'Droid',
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
+                            )
+                          : const SizedBox()),
 
                       // Action buttons
                       Padding(
@@ -537,8 +503,10 @@ class _FreePurchasePageState extends State<FreePurchasePage> {
                             Expanded(
                               child: SizedBox(
                                 height: 50,
-                                child: ElevatedButton(
-                                  onPressed: _savePurchase,
+                                child: Obx(() => ElevatedButton(
+                                  onPressed: controller.isLoading.value
+                                      ? null
+                                      : () => _savePurchase(context),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: greenCustomColor,
                                     minimumSize:
@@ -548,16 +516,19 @@ class _FreePurchasePageState extends State<FreePurchasePage> {
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                   ),
-                                  child: const Text(
-                                    'حفظ عملية الشراء',
-                                    style: TextStyle(
-                                      fontFamily: 'Droid',
-                                      color: whiteColor,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
-                                    ),
-                                  ),
-                                ),
+                                  child: controller.isLoading.value
+                                      ? const CircularProgressIndicator(
+                                          color: Colors.white)
+                                      : const Text(
+                                          'حفظ عملية الشراء',
+                                          style: TextStyle(
+                                            fontFamily: 'Droid',
+                                            color: whiteColor,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 18,
+                                          ),
+                                        ),
+                                )),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -566,7 +537,10 @@ class _FreePurchasePageState extends State<FreePurchasePage> {
                                 height: 50,
                                 child: CustomButton(
                                   text: 'إلغاء',
-                                  onPressed: () => Navigator.of(context).pop(),
+                                  onPressed: () {
+                                    controller.resetForm();
+                                    Navigator.of(context).pop();
+                                  },
                                 ),
                               ),
                             ),
@@ -582,14 +556,5 @@ class _FreePurchasePageState extends State<FreePurchasePage> {
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _productController.dispose();
-    _quantityController.dispose();
-    _unitPriceController.dispose();
-    _totalPriceController.dispose();
-    super.dispose();
   }
 }

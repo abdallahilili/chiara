@@ -1,49 +1,26 @@
 import 'package:chira/common/utils/colors.dart';
-import 'package:chira/features/orders/repositories/orders_repository.dart';
+import 'package:chira/features/orders/controllers/orders_controller.dart';
 import 'package:chira/features/purchases/screens/request_based_purchase_page.dart';
 import 'package:chira/models/request_model.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
-class RequestSelectionPage extends StatefulWidget {
+class RequestSelectionPage extends StatelessWidget {
   final String shopId;
 
-  const RequestSelectionPage({super.key, required this.shopId});
+  RequestSelectionPage({super.key, required this.shopId});
 
-  @override
-  _RequestSelectionPageState createState() => _RequestSelectionPageState();
-}
-
-class _RequestSelectionPageState extends State<RequestSelectionPage> {
-  List<RequestModel> _requests = [];
-  RequestModel? _selectedRequest;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadRequests();
-  }
-
-  Future<void> _loadRequests() async {
-    try {
-      final requests =
-          await OrdersRepository.getShopRequests(widget.shopId).first;
-      setState(() {
-        _requests = requests;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('حدث خطأ أثناء تحميل الطلبات')),
-      );
-    }
-  }
+  // Injection du controller GetX
+  final OrdersController controller = Get.put(OrdersController());
+  
+  // Variable réactive pour la requête sélectionnée
+  final Rx<RequestModel?> selectedRequest = Rx<RequestModel?>(null);
 
   @override
   Widget build(BuildContext context) {
+    // Charger les requêtes au premier build
+    controller.fetchShopRequests(shopId);
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -54,7 +31,7 @@ class _RequestSelectionPageState extends State<RequestSelectionPage> {
             onPressed: () => Navigator.of(context).pop(),
           ),
         ),
-        body: _isLoading
+        body: Obx(() => controller.isLoading.value
             ? const Center(child: CircularProgressIndicator())
             : Column(
                 children: [
@@ -70,7 +47,7 @@ class _RequestSelectionPageState extends State<RequestSelectionPage> {
                     ),
                   ),
                   Expanded(
-                    child: _requests.isEmpty
+                    child: controller.shopRequests.isEmpty
                         ? const Center(
                             child: Text(
                               'لا توجد طلبيات متاحة',
@@ -81,11 +58,10 @@ class _RequestSelectionPageState extends State<RequestSelectionPage> {
                             ),
                           )
                         : ListView.builder(
-                            itemCount: _requests.length,
+                            itemCount: controller.shopRequests.length,
                             itemBuilder: (context, index) {
-                              final request = _requests[index];
-                              return // Dans votre ListView.builder, remplacez le Card actuel par ceci:
-                                  Card(
+                              final request = controller.shopRequests[index];
+                              return Obx(() => Card(
                                 margin: const EdgeInsets.symmetric(
                                     horizontal: 16, vertical: 8),
                                 elevation: 2,
@@ -94,9 +70,7 @@ class _RequestSelectionPageState extends State<RequestSelectionPage> {
                                 ),
                                 child: InkWell(
                                   onTap: () {
-                                    setState(() {
-                                      _selectedRequest = request;
-                                    });
+                                    selectedRequest.value = request;
                                   },
                                   borderRadius: BorderRadius.circular(12),
                                   child: Padding(
@@ -119,11 +93,9 @@ class _RequestSelectionPageState extends State<RequestSelectionPage> {
                                             ),
                                             Radio<RequestModel>(
                                               value: request,
-                                              groupValue: _selectedRequest,
+                                              groupValue: selectedRequest.value,
                                               onChanged: (value) {
-                                                setState(() {
-                                                  _selectedRequest = value;
-                                                });
+                                                selectedRequest.value = value;
                                               },
                                             ),
                                           ],
@@ -180,7 +152,7 @@ class _RequestSelectionPageState extends State<RequestSelectionPage> {
                                           const SizedBox(height: 8),
                                           Text(
                                             'المبلغ المقترح: ${request.montant} أوقية',
-                                            style: TextStyle(
+                                            style: const TextStyle(
                                               fontFamily: 'Droid',
                                               color: greenCustomColor,
                                               fontWeight: FontWeight.bold,
@@ -191,7 +163,7 @@ class _RequestSelectionPageState extends State<RequestSelectionPage> {
                                     ),
                                   ),
                                 ),
-                              );
+                              ));
                             },
                           ),
                   ),
@@ -200,16 +172,16 @@ class _RequestSelectionPageState extends State<RequestSelectionPage> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: ElevatedButton(
-                            onPressed: _selectedRequest != null
+                          child: Obx(() => ElevatedButton(
+                            onPressed: selectedRequest.value != null
                                 ? () {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) =>
                                             RequestBasedPurchasePage(
-                                          request: _selectedRequest!,
-                                          shopId: widget.shopId,
+                                          request: selectedRequest.value!,
+                                          shopId: shopId,
                                         ),
                                       ),
                                     );
@@ -230,13 +202,13 @@ class _RequestSelectionPageState extends State<RequestSelectionPage> {
                                 fontSize: 16,
                               ),
                             ),
-                          ),
+                          )),
                         ),
                       ],
                     ),
                   ),
                 ],
-              ),
+              )),
       ),
     );
   }

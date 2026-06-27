@@ -39,7 +39,7 @@ class PurchaseTypeDialog extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const FreePurchasePage(),
+                  builder: (context) => FreePurchasePage(),
                 ),
               );
             },

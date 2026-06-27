@@ -110,7 +110,7 @@ class _HomePageState extends State<HomePage> {
   AppBar _buildAppBar() {
     return AppBar(
       title: const Text(
-        'Chira',
+        'الصفحة الرئيسية',
         style: TextStyle(fontSize: 20, fontFamily: 'Droid'),
       ),
       actions: [

@@ -2,24 +2,24 @@ import 'package:chira/common/utils/colors.dart';
 import 'package:chira/common/widgets/custom_button.dart';
 import 'package:chira/common/widgets/custom_input.dart';
 import 'package:chira/common/widgets/custom_input_number.dart';
+import 'package:chira/features/orders/controllers/orders_controller.dart';
 import 'package:chira/features/orders/screens/create_order_affect_vendeur.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
-class CreateOrderPage extends StatefulWidget {
-// liste des produits ajoutés
+class CreateOrderPage extends StatelessWidget {
+  CreateOrderPage({Key? key}) : super(key: key);
 
-  @override
-  _CreateOrderPageState createState() => _CreateOrderPageState();
-}
-
-class _CreateOrderPageState extends State<CreateOrderPage> {
+  // Injection du controller GetX
+  final OrdersController controller = Get.put(OrdersController());
+  
+  // Controllers pour les champs de texte
   final TextEditingController _productController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _unitController = TextEditingController();
-  // Liste des produits ajoutés
-
-  List<Map<String, dynamic>> _addedProducts = [];
-  int? _editingIndex; // Index du produit en cours de modification
+  
+  // Index du produit en cours de modification
+  final RxInt editingIndex = (-1).obs;
 
   void _addOrUpdateProduct() {
     String product = _productController.text.trim();
@@ -27,40 +27,35 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
     String unit = _unitController.text.trim();
 
     if (product.isNotEmpty && quantity.isNotEmpty) {
-      setState(() {
-        if (_editingIndex == null) {
-          // Ajout d'un nouveau produit
-          _addedProducts.add({
-            'product': product,
-            'quantity': quantity,
-            'unit': unit,
-          });
-        } else {
-          // Mise à jour d'un produit existant
-          _addedProducts[_editingIndex!] = {
-            'product': product,
-            'quantity': quantity,
-            'unit': unit,
-          };
-          _editingIndex = null; // Réinitialiser après mise à jour
-        }
+      if (editingIndex.value == -1) {
+        // Ajout d'un nouveau produit
+        controller.addProduct({
+          'product': product,
+          'quantity': quantity,
+          'unit': unit,
+        });
+      } else {
+        // Mise à jour d'un produit existant
+        controller.updateProduct(editingIndex.value, {
+          'product': product,
+          'quantity': quantity,
+          'unit': unit,
+        });
+        editingIndex.value = -1; // Réinitialiser après mise à jour
+      }
 
-        // Vider les champs après l'ajout ou la mise à jour
-        _productController.clear();
-        _quantityController.clear();
-        _unitController.clear();
-      });
+      // Vider les champs après l'ajout ou la mise à jour
+      _productController.clear();
+      _quantityController.clear();
+      _unitController.clear();
     }
   }
 
   void _editProduct(int index) {
-    setState(() {
-      _productController.text = _addedProducts[index]['product'];
-      _quantityController.text = _addedProducts[index]['quantity'];
-      _unitController.text = _addedProducts[index]['unit'];
-      _editingIndex =
-          index; // Stocker l'index de l'élément en cours de modification
-    });
+    _productController.text = controller.addedProducts[index]['product'];
+    _quantityController.text = controller.addedProducts[index]['quantity'];
+    _unitController.text = controller.addedProducts[index]['unit'];
+    editingIndex.value = index; // Stocker l'index de l'élément en cours de modification
   }
 
   @override
@@ -72,7 +67,10 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
           title: const Text('إنشاء طبلية'),
           leading: IconButton(
             icon: const Icon(Icons.close),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              controller.resetForm();
+              Navigator.of(context).pop();
+            },
           ),
         ),
         body: Padding(
@@ -108,14 +106,14 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  IconButton(
+                  Obx(() => IconButton(
                     icon: Icon(
-                      _editingIndex == null ? Icons.add_circle : Icons.edit,
+                      editingIndex.value == -1 ? Icons.add_circle : Icons.edit,
                       color: Colors.green,
                       size: 40,
                     ),
                     onPressed: _addOrUpdateProduct,
-                  ),
+                  )),
                 ],
               ),
               const SizedBox(height: 20),
@@ -127,8 +125,8 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                 ),
               ),
               Expanded(
-                child: ListView.builder(
-                  itemCount: _addedProducts.length,
+                child: Obx(() => ListView.builder(
+                  itemCount: controller.addedProducts.length,
                   itemBuilder: (context, index) {
                     return Card(
                       margin: const EdgeInsets.symmetric(
@@ -144,16 +142,13 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                           icon: const Icon(Icons.remove_circle,
                               color: Colors.red, size: 30),
                           onPressed: () {
-                            setState(() {
-                              _addedProducts.removeAt(index);
-                            });
+                            controller.removeProduct(index);
                           },
                         ),
                         title: GestureDetector(
-                          onTap: () => _editProduct(
-                              index), // Remplir le formulaire au clic
+                          onTap: () => _editProduct(index), // Remplir le formulaire au clic
                           child: Text(
-                            _addedProducts[index]['product'],
+                            controller.addedProducts[index]['product'],
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -170,7 +165,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            '${_addedProducts[index]['quantity']} ${_addedProducts[index]['unit'] ?? 'وحدة'}',
+                            '${controller.addedProducts[index]['quantity']} ${controller.addedProducts[index]['unit'] ?? 'وحدة'}',
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -182,7 +177,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                       ),
                     );
                   },
-                ),
+                )),
               ),
               Row(
                 children: [
@@ -193,7 +188,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => CreateOrderAffectVendeurPage(
-                            addedProducts: _addedProducts,
+                            addedProducts: controller.addedProducts,
                             shopId: '008', // إرسال قائمة المنتجات
                           ),
                         ),
@@ -221,7 +216,10 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                   Expanded(
                     child: CustomButton(
                         text: 'إلغاء',
-                        onPressed: () => Navigator.of(context).pop()),
+                        onPressed: () {
+                          controller.resetForm();
+                          Navigator.of(context).pop();
+                        }),
                   ),
                 ],
               ),
@@ -230,13 +228,5 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _productController.dispose();
-    _quantityController.dispose();
-    _unitController.dispose();
-    super.dispose();
   }
 }

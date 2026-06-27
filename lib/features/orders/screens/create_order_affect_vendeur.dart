@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:chira/features/orders/controllers/orders_controller.dart';
 import 'package:chira/features/orders/widgets/action_buttons_widget.dart';
 import 'package:chira/features/orders/widgets/amount_input_widget.dart';
 import 'package:chira/features/orders/widgets/buyer_selector_widget.dart';
@@ -12,30 +13,24 @@ import 'package:chira/features/orders/widgets/success_dialog.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:excel/excel.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:get/get.dart';
 
-class CreateOrderAffectVendeurPage extends StatefulWidget {
+class CreateOrderAffectVendeurPage extends StatelessWidget {
   final List<Map<String, dynamic>> addedProducts;
   final String shopId;
 
-  const CreateOrderAffectVendeurPage({
+  CreateOrderAffectVendeurPage({
     Key? key,
     required this.addedProducts,
     required this.shopId,
   }) : super(key: key);
 
-  @override
-  _CreateOrderAffectVendeurPageState createState() =>
-      _CreateOrderAffectVendeurPageState();
-}
-
-class _CreateOrderAffectVendeurPageState
-    extends State<CreateOrderAffectVendeurPage> {
+  // Injection du controller GetX
+  final OrdersController controller = Get.put(OrdersController());
+  
+  // Controllers pour les champs de texte
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
-  String? _selectedBuyer;
-  File? _selectedImage;
-  bool _isLoading = false;
-  File? _generatedPdfFile;
 
   // Buyers map
   final Map<String, String> _buyersMap = {
@@ -48,14 +43,13 @@ class _CreateOrderAffectVendeurPageState
     final pickedImage =
         await ImagePicker().pickImage(source: ImageSource.gallery);
     if (pickedImage != null) {
-      setState(() {
-        _selectedImage = File(pickedImage.path);
-      });
+      controller.setSelectedImage(File(pickedImage.path));
     }
   }
 
   Future<String?> generateAndUploadExcelFile(
     List<Map<String, dynamic>> addedProducts,
+    BuildContext context,
   ) async {
     // Créer un classeur Excel
     final excel = Excel.createExcel();
@@ -125,29 +119,26 @@ class _CreateOrderAffectVendeurPageState
     }
   }
 
-  Future<void> saveOrder() async {
-    setState(() {
-      _isLoading = true;
-    });
-
+  Future<void> saveOrder(BuildContext context) async {
     try {
       // 1. Générer et télécharger le fichier Excel
-      final excelUrl = await generateAndUploadExcelFile(widget.addedProducts);
+      final excelUrl = await generateAndUploadExcelFile(addedProducts, context);
       if (excelUrl == null) {
         throw Exception("Échec du téléchargement du fichier Excel");
       }
 
-      // 2. Générer le PDF et récupérer le fichier
-      final File pdfFile = await OrdersRepository.generatePdf(
+      // 2. Générer le PDF via le controller
+      final File? pdfFile = await controller.generatePdf(
         amount: _amountController.text,
-        buyer: _selectedBuyer,
+        buyer: controller.selectedBuyer.value,
         description: _descriptionController.text,
-        addedProducts: widget.addedProducts,
-        imageFile: _selectedImage,
+        products: addedProducts,
+        imageFile: controller.selectedImage.value,
       );
 
-      // Stocker le fichier PDF pour une utilisation ultérieure
-      _generatedPdfFile = pdfFile;
+      if (pdfFile == null) {
+        throw Exception("Échec de la génération du PDF");
+      }
 
       // 3. Télécharger le PDF sur Supabase
       final pdfUrl = await uploadPdfToSupabase(pdfFile);
@@ -155,41 +146,40 @@ class _CreateOrderAffectVendeurPageState
         throw Exception("Échec du téléchargement du PDF");
       }
 
-      // 4. Créer la demande dans Firebase avec tous les nouveaux champs
+      // 4. Créer la demande via le controller
       final String? buyerId =
-          _selectedBuyer != null ? _buyersMap[_selectedBuyer] : null;
+          controller.selectedBuyer.value != null 
+              ? _buyersMap[controller.selectedBuyer.value] 
+              : null;
 
-      await OrdersRepository.createRequest(
-        products: widget.addedProducts,
+      final success = await controller.createRequest(
+        products: addedProducts,
         fileUrl: pdfUrl,
         excelFileUrl: excelUrl,
         montant: _amountController.text,
         description: _descriptionController.text,
         purchaseById: buyerId,
-        shopId: widget.shopId,
+        shopId: shopId,
       );
 
-      setState(() {
-        _isLoading = false;
-      });
+      if (!success) {
+        throw Exception(controller.errorMessage.value);
+      }
 
       // Afficher un dialogue de succès
-      if (!mounted) return;
+      if (!context.mounted) return;
 
       // Utiliser le nouveau widget à travers l'extension
       context.showOrderSuccessDialog(
-        pdfFile: _generatedPdfFile,
+        pdfFile: controller.generatedPdfFile.value,
         onDismiss: () {
+          controller.resetForm();
           Navigator.of(context).pop(); // Retourner à l'écran précédent
         },
       );
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-
       // Afficher un message d'erreur
-      if (!mounted) return;
+      if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -208,10 +198,13 @@ class _CreateOrderAffectVendeurPageState
           title: const Text('إسناد الطلبية'),
           leading: IconButton(
             icon: const Icon(Icons.close),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              controller.resetForm();
+              Navigator.of(context).pop();
+            },
           ),
         ),
-        body: Stack(
+        body: Obx(() => Stack(
           children: [
             SingleChildScrollView(
               child: Padding(
@@ -230,11 +223,9 @@ class _CreateOrderAffectVendeurPageState
                     // Widget sélecteur d'acheteur
                     BuyerSelectorWidget(
                       buyersMap: _buyersMap,
-                      selectedBuyer: _selectedBuyer,
+                      selectedBuyer: controller.selectedBuyer.value,
                       onBuyerChanged: (value) {
-                        setState(() {
-                          _selectedBuyer = value;
-                        });
+                        controller.setSelectedBuyer(value);
                       },
                     ),
                     const SizedBox(height: 16),
@@ -245,11 +236,9 @@ class _CreateOrderAffectVendeurPageState
 
                     // Widget de sélection d'image
                     ImagePickerWidget(
-                      selectedImage: _selectedImage,
+                      selectedImage: controller.selectedImage.value,
                       onImageSelected: (file) {
-                        setState(() {
-                          _selectedImage = file;
-                        });
+                        controller.setSelectedImage(file);
                       },
                     ),
                     const SizedBox(height: 16),
@@ -260,8 +249,11 @@ class _CreateOrderAffectVendeurPageState
 
                     // Widget des boutons d'action
                     ActionButtonsWidget(
-                      onSave: saveOrder,
-                      onCancel: () => Navigator.of(context).pop(),
+                      onSave: () => saveOrder(context),
+                      onCancel: () {
+                        controller.resetForm();
+                        Navigator.of(context).pop();
+                      },
                     ),
                   ],
                 ),
@@ -270,19 +262,12 @@ class _CreateOrderAffectVendeurPageState
 
             // Widget d'overlay de chargement
             LoadingOverlayWidget(
-              isLoading: _isLoading,
+              isLoading: controller.isLoading.value,
               color: Theme.of(context).primaryColor,
             ),
           ],
-        ),
+        )),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _amountController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
   }
 }

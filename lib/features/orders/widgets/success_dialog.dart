@@ -1,6 +1,4 @@
 import 'dart:io';
-import 'dart:math';
-import 'package:animated_icon/animated_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
