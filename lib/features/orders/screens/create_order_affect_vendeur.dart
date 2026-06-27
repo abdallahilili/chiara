@@ -1,17 +1,17 @@
 import 'dart:io';
-import 'package:chira/common/repositories/supabase_storage_repository.dart';
-import 'package:chira/features/orders/repositories/orders_repository.dart';
-import 'package:chira/features/orders/widgets/success_dialog.dart';
-import 'package:excel/excel.dart';
+import 'package:chira/features/orders/widgets/action_buttons_widget.dart';
+import 'package:chira/features/orders/widgets/amount_input_widget.dart';
+import 'package:chira/features/orders/widgets/buyer_selector_widget.dart';
+import 'package:chira/features/orders/widgets/description_input_widget.dart';
+import 'package:chira/features/orders/widgets/image_picker_widget.dart';
+import 'package:chira/features/orders/widgets/loading_overlay_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:chira/features/orders/repositories/orders_repository.dart';
+import 'package:chira/common/repositories/supabase_storage_repository.dart';
+import 'package:chira/features/orders/widgets/success_dialog.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:chira/common/widgets/custom_button.dart';
-import 'package:chira/common/widgets/custom_input.dart';
-import 'package:chira/common/widgets/custom_input_number.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:open_filex/open_filex.dart'; // Ajout de l'import pour ouvrir le fichier
+import 'package:excel/excel.dart';
+import 'package:image_picker/image_picker.dart';
 
 class CreateOrderAffectVendeurPage extends StatefulWidget {
   final List<Map<String, dynamic>> addedProducts;
@@ -35,9 +35,9 @@ class _CreateOrderAffectVendeurPageState
   String? _selectedBuyer;
   File? _selectedImage;
   bool _isLoading = false;
-  File? _generatedPdfFile; // Pour stocker le fichier PDF généré
+  File? _generatedPdfFile;
 
-  // Modifiez ces valeurs avec les IDs réels des acheteurs
+  // Buyers map
   final Map<String, String> _buyersMap = {
     'المشتري 1': 'buyer_id_1',
     'المشتري 2': 'buyer_id_2',
@@ -159,14 +159,14 @@ class _CreateOrderAffectVendeurPageState
       final String? buyerId =
           _selectedBuyer != null ? _buyersMap[_selectedBuyer] : null;
 
-      final requestId = await OrdersRepository.createRequest(
+      await OrdersRepository.createRequest(
         products: widget.addedProducts,
-        fileUrl: pdfUrl, // URL du PDF
-        excelFileUrl: excelUrl, // URL du fichier Excel
-        montant: _amountController.text, // Montant de la commande
-        description: _descriptionController.text, // Description de la commande
-        purchaseById: buyerId, // ID de l'acheteur sélectionné
-        shopId: widget.shopId, // ID du magasin
+        fileUrl: pdfUrl,
+        excelFileUrl: excelUrl,
+        montant: _amountController.text,
+        description: _descriptionController.text,
+        purchaseById: buyerId,
+        shopId: widget.shopId,
       );
 
       setState(() {
@@ -227,31 +227,11 @@ class _CreateOrderAffectVendeurPageState
                     ),
                     const SizedBox(height: 8),
 
-                    // Dropdown pour sélectionner l'acheteur
-                    DropdownButtonFormField<String>(
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(25),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(25),
-                          borderSide: const BorderSide(
-                              color: Color.fromARGB(255, 42, 100, 45),
-                              width: 2),
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                      ),
-                      value: _selectedBuyer,
-                      items: _buyersMap.keys
-                          .map((buyer) => DropdownMenuItem(
-                              value: buyer, child: Text(buyer)))
-                          .toList(),
-                      onChanged: (value) {
+                    // Widget sélecteur d'acheteur
+                    BuyerSelectorWidget(
+                      buyersMap: _buyersMap,
+                      selectedBuyer: _selectedBuyer,
+                      onBuyerChanged: (value) {
                         setState(() {
                           _selectedBuyer = value;
                         });
@@ -259,87 +239,40 @@ class _CreateOrderAffectVendeurPageState
                     ),
                     const SizedBox(height: 16),
 
-                    // Champ pour le montant
-                    CustomInputNumber(
-                      controller: _amountController,
-                      hintText: 'المبلغ المرسل',
+                    // Widget de saisie du montant
+                    AmountInputWidget(controller: _amountController),
+                    const SizedBox(height: 16),
+
+                    // Widget de sélection d'image
+                    ImagePickerWidget(
+                      selectedImage: _selectedImage,
+                      onImageSelected: (file) {
+                        setState(() {
+                          _selectedImage = file;
+                        });
+                      },
                     ),
                     const SizedBox(height: 16),
 
-                    // Sélection et affichage d'une image
-                    GestureDetector(
-                      onTap: selectImage,
-                      child: Container(
-                        width: double.infinity,
-                        height: 150,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: _selectedImage != null
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.file(
-                                  _selectedImage!,
-                                  width: double.infinity,
-                                  height: 150,
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            : const Center(
-                                child: Icon(
-                                  Icons.camera_alt,
-                                  size: 40,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Champ de description
-                    CustomInput(
-                      controller: _descriptionController,
-                      hintText: 'وصف',
-                      maxLines: 4,
-                    ),
+                    // Widget de saisie de description
+                    DescriptionInputWidget(controller: _descriptionController),
                     const SizedBox(height: 20),
 
-                    // Boutons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: CustomButton(
-                            text: 'حفظ',
-                            onPressed: saveOrder,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: CustomButton(
-                            text: 'إلغاء',
-                            onPressed: () => Navigator.of(context).pop(),
-                          ),
-                        ),
-                      ],
+                    // Widget des boutons d'action
+                    ActionButtonsWidget(
+                      onSave: saveOrder,
+                      onCancel: () => Navigator.of(context).pop(),
                     ),
                   ],
                 ),
               ),
             ),
 
-            // Indicateur de chargement
-            if (_isLoading)
-              Container(
-                color: Colors.black.withOpacity(0.3),
-                child: Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Theme.of(context).primaryColor,
-                    ),
-                  ),
-                ),
-              ),
+            // Widget d'overlay de chargement
+            LoadingOverlayWidget(
+              isLoading: _isLoading,
+              color: Theme.of(context).primaryColor,
+            ),
           ],
         ),
       ),

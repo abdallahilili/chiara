@@ -50,7 +50,7 @@ dependencies:
   pdf: ^3.11.3
   open_filex: ^4.7.0
   excel: ^2.0.0
-  permission_handler: ^10.0.0 
+  permission_handler: ^11.0.1 
   share_plus: ^7.2.0
   animated_icon: ^0.0.9
   lottie: ^3.1.0
